@@ -18,6 +18,7 @@
 
 import daiquiri
 from pathlib import Path
+from typing import Dict
 from typing import Generator
 from typing import List
 from typing import Optional
@@ -65,8 +66,7 @@ class ImportVisitor(ast.NodeVisitor):
         """Visit `import from` statements and capture imported modules/names."""
         if import_from_node.level != 0:
             _LOGGER.debug(
-                "Not considering local import %r",
-                ",".join(i.name for i in import_from_node.names),
+                "Not considering local import %r", ",".join(i.name for i in import_from_node.names),
             )
             return
 
@@ -74,8 +74,7 @@ class ImportVisitor(ast.NodeVisitor):
             if alias.asname:
                 if alias.asname in self.imports_from:
                     _LOGGER.warning(
-                        "Multiple imports for %r found, detection might give misleading results",
-                        alias.asname,
+                        "Multiple imports for %r found, detection might give misleading results", alias.asname,
                     )
                 self.imports_from[alias.asname] = {
                     "module": import_from_node.module,
@@ -84,8 +83,7 @@ class ImportVisitor(ast.NodeVisitor):
             else:
                 if alias.name in self.imports_from:
                     _LOGGER.warning(
-                        "Multiple imports for name %r found, detection might give misleading results",
-                        alias.name,
+                        "Multiple imports for name %r found, detection might give misleading results", alias.name,
                     )
                 self.imports_from[alias.name] = {
                     "module": import_from_node.module,
@@ -93,9 +91,7 @@ class ImportVisitor(ast.NodeVisitor):
                 }
 
 
-def _iter_python_file_ast(
-    path: str, *, ignore_errors: bool
-) -> Generator[Tuple[Path, object], None, None]:
+def _iter_python_file_ast(path: str, *, ignore_errors: bool) -> Generator[Tuple[Path, object], None, None]:
     """Get AST for all the files given the path."""
     for python_file in _get_python_files(path):
         python_file_path = Path(python_file)
@@ -155,24 +151,22 @@ def cli() -> None:
     default="https://pypi.org/simple",
     show_default=True,
 )
-def gather(
-    tensorflow_name: str, tensorflow_versions: Optional[str], index_url: str
-) -> None:
+def gather(tensorflow_name: str, tensorflow_versions: Optional[str], index_url: str) -> None:
     """Gather symbols available in a TensorFlow release."""
     index = Source(index_url)
-    tf_versions = (
-        tensorflow_versions.split(",")
-        if tensorflow_versions
-        else index.get_package_versions(tensorflow_name)
-    )
+    tf_versions = tensorflow_versions.split(",") if tensorflow_versions else index.get_package_versions(tensorflow_name)
 
     os.makedirs("data", exist_ok=True)
 
     for tf_version in tf_versions:
         # We consider only manylinux releases.
-        artifacts = [a for a in index.get_package_artifacts(tensorflow_name, tf_version) if "manylinux" in a.artifact_name]
+        artifacts = [
+            a for a in index.get_package_artifacts(tensorflow_name, tf_version) if "manylinux" in a.artifact_name
+        ]
         if not artifacts:
-            _LOGGER.error("No manylinux artifact found for %r in version %r on %r", tensorflow_name, tf_version, index.url)
+            _LOGGER.error(
+                "No manylinux artifact found for %r in version %r on %r", tensorflow_name, tf_version, index.url
+            )
 
         artifact = artifacts[0]
         _LOGGER.info("Downloading artifact %r", artifact.artifact_name)
@@ -180,23 +174,23 @@ def gather(
         artifact._extract_py_module()
         api_path = os.path.join(artifact.dir_name, "tensorflow", "_api")
 
-        file_symbols = {}
+        file_symbols: Dict[str, List[str]] = {}
         for python_file, file_ast in _iter_python_file_ast(api_path, ignore_errors=True):
             visitor = ImportVisitor()
-            visitor.visit(file_ast)
+            visitor.visit(file_ast)  # type: ignore
 
             file_symbols[str(python_file)] = [
                 i for i in (*visitor.imports.keys(), *visitor.imports_from.keys()) if not i.startswith("_")
             ]
 
         result = []
-        for python_file, symbols in file_symbols.items():
-            module_name = f"tensorflow.{python_file[python_file.index('/_api/') + 6:]}"
+        for file_name, symbols in file_symbols.items():
+            module_name = f"tensorflow.{file_name[file_name.index('/_api/') + 6:]}"
             if module_name.endswith(("__init__.py", ".__init__.py")):
-                module_name = module_name[:-len("/__init__.py")]
+                module_name = module_name[: -len("/__init__.py")]
 
             if module_name.endswith(".py"):
-                module_name = module_name[:-len(".py")]
+                module_name = module_name[: -len(".py")]
             module_name = module_name.replace("/", ".")
 
             # XXX: tensorflow.v2.v2 has some kind of special meaning?!
