@@ -64,12 +64,6 @@ class ImportVisitor(ast.NodeVisitor):
 
     def visit_ImportFrom(self, import_from_node: ast.ImportFrom) -> None:
         """Visit `import from` statements and capture imported modules/names."""
-        if import_from_node.level != 0:
-            _LOGGER.debug(
-                "Not considering local import %r", ",".join(i.name for i in import_from_node.names),
-            )
-            return
-
         for alias in import_from_node.names:
             if alias.asname:
                 if alias.asname in self.imports_from:
