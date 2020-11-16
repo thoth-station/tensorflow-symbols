@@ -3,6 +3,10 @@ Gather and manipulate with symbols provided by TensorFlow
 
 Gather and manipulate with symbols as provided by TensorFlow.
 
+The intention of this project is to aggregate TensorFlow symbols for Thoth's
+adviser. The aggregation is done by Thoth developers or Thoth administrators to
+have symbols available on the recommendation engine side.
+
 Gathering symbols provided by TensorFlow
 ========================================
 
