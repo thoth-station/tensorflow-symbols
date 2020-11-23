@@ -44,7 +44,7 @@ def gather() -> None:
 
     queue = deque([tf._api.v2, tf_v2])
 
-    result = []
+    result = set()
     modules_seen = set()
     while queue:
         module = queue.pop()
@@ -58,10 +58,17 @@ def gather() -> None:
                     queue.append(obj)
             else:
                 m = module.__name__.replace("tensorflow._api.v2", "tensorflow")
-                result.append(f"{m}.{item}")
+                result.add(f"{m}.{item}")
+
+                if str(item) == "__all__":
+                    try:
+                        for sym in getattr(module, item) or []:
+                            result.add(f"{m}.{sym}")
+                    except Exception:
+                        _LOGGER.exception("Failed to obtain symbols exported by __all__, skipping the error")
 
     with open(f"data/{tf.__version__}.json", "w") as f:
-        json.dump(sorted(result), f, indent=2)
+        json.dump(sorted(list(result)), f, indent=2)
 
 
 @cli.command()
