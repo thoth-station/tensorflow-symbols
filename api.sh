@@ -2,7 +2,7 @@
 
 pipenv install --dev
 
-for tf_version in "2.2.0", "2.3.0", "2.4.0", "2.5.0", "2.6.0"
+for tf_version in "2.2.0", "2.3.0", "2.4.0", "2.5.0", "2.6.0", "2.7.0"
 do
     pipenv run pip install "tensorflow===${tf_version}"
     pipenv run python3 app.py gather
